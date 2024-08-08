@@ -37,38 +37,39 @@ def make_transition_map(initial_board):
     """
     rows = len(initial_board)
     cols = len(initial_board[0])
-    
+    probs = [0.7,0.1,0.1,0.1]
     transition_map = {}
     
-    actions = [(-1,0), (1,0), (0,-1), (0,1),(0,0)]
-    probs = [0.7,0.1,0.1,0.1]
-    
-    for i in range (rows) :
-        for j in range (cols): 
+    for i in range(rows):
+        for j in range(cols):
             if initial_board[i][j] != '#':
-                state = (i,j)
+                state = (i, j)
                 transition_map[state] = {}
-                
-                for action in range (4):
+                for action in range(4):
                     transitions = []
-                    for k in range (4):
-                        di,dj = actions[k]
-                        next_state = (i+di, j+dj)
+                    for k in range(4):
                         
-                        if (0 <= next_state [0]< rows and 0 <= next_state[1] < cols and 
-                            initial_board[next_state[0]][next_state[1]] != '#') :
-                            reward = 1
+                        if k == 0:
+                            next_state = (i-1, j)  
+                        elif k == 1:
+                            next_state = (i+1, j)  
+                        elif k == 2:
+                            next_state = (i, j-1)  
+                        elif k == 3:
+                            next_state = (i, j+1)  
+                        
+                        if (0 <= next_state[0] < rows and 0 <= next_state[1] < cols and 
+                            initial_board[next_state[0]][next_state[1]] != '#'):
+                            reward = 1 if initial_board[next_state[0]][next_state[1]] == "@" else 0
                             terminal = initial_board[next_state[0]][next_state[1]] == "@"
                             transitions.append((probs[k], next_state, reward, terminal))
                         else:
                             reward = 0
-                            transitions.append((probs[k], state,reward, False))
+                            transitions.append((probs[k], state, reward, False))
                             
                     transition_map[state][action] = transitions
     return transition_map
-    
-    
-    
+
     
     
     
