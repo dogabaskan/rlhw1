@@ -52,6 +52,7 @@ class DPAgent():
         for state in self.values:
             v = self.values[state]
             new_val = 0
+            
             for action, action_prob in enumerate(self.policy_dist[state]):
                 for prob, next_state, reward, done in self.transitions_map[state][action]:
                     new_val += action_prob * prob * (reward + gamma * self.values[next_state])
@@ -117,7 +118,7 @@ class PolicyIteration(DPAgent):
                 delta = self.one_step_policy_eval(gamma)
                 if delta < epsilon:
                     break
-                if self.policy_improvement(gamma):
+            if self.policy_improvement(gamma):
                     break
 
 

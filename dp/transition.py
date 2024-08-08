@@ -37,7 +37,7 @@ def make_transition_map(initial_board):
     """
     rows = len(initial_board)
     cols = len(initial_board[0])
-    probs = [0.7,0.1,0.1,0.1]
+    # probs = [0.7,0.1,0.1,0.1]
     transition_map = {}
     
     for i in range(rows):
@@ -60,12 +60,16 @@ def make_transition_map(initial_board):
                         
                         if (0 <= next_state[0] < rows and 0 <= next_state[1] < cols and 
                             initial_board[next_state[0]][next_state[1]] != '#'):
+                            
                             reward = 1 if initial_board[next_state[0]][next_state[1]] == "@" else 0
                             terminal = initial_board[next_state[0]][next_state[1]] == "@"
-                            transitions.append((probs[k], next_state, reward, terminal))
+                            prob = 0.7 if k == action else 0.1
+                            transitions.append((prob, next_state, reward, terminal))
+                            
                         else:
                             reward = 0
-                            transitions.append((probs[k], state, reward, False))
+                            prob = 0.7 if k == action else 0.1
+                            transitions.append((prob, state, reward, False))
                             
                     transition_map[state][action] = transitions
     return transition_map
