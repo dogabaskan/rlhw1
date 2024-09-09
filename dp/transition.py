@@ -35,54 +35,40 @@ def make_transition_map(initial_board):
     Return:
         transition map
     """
+
     rows = len(initial_board)
     cols = len(initial_board[0])
-    
-    transition_map = {}
-    
-    for i in range(rows):
-        for j in range(cols):
-            if initial_board[i][j] != "#":
-                state = (i,j)
-                transition_map[state] = {}
-                #print("A", len(transition_map))
-                
-                for action in range (4):
-                    transitions = []
-                    for k in range(4):
-                        
-                        if k == 0:
-                            next_state = (i-1, j)
-                        elif k == 1:
-                            next_state = (i+1, j)
-                        elif k == 2 :
-                            next_state = (i, j-1)
-                        elif k == 3 :
-                            next_state = (i, j+1)
-                        
-                        if (0 <= next_state[0] < rows and 0 <= next_state[1] < cols and 
-                            initial_board[next_state[0]][next_state[1]] != "#"):
-                            
-                            reward = 1 if initial_board[next_state[0]][next_state[1]] == "@" else 0
-                            terminal = initial_board[next_state[0]][next_state[1]] == "@"
-                            
-                            prob = 0.7 if k == action else 0.1
-                            
-                            transitions.append([prob, next_state, reward, terminal])
-                        else: 
-                            
-                            reward = 0
-                            prob = 0.7 if k == action else 0.1
-                            terminal = False
-                            
-                            transitions.append([prob, state, reward, terminal])
-                    
-                    transition_map[state][action] = transitions
-                    
-    return transition_map
 
-                
-                        
+    # Identify passable states, which are not walls ('#' or 35 in ASCII)
+    passable_states = [(i, j) for i in range(rows) for j in range(cols) if initial_board[i][j] != 35]
+
+    transition_map = {}
+
+    # Directions for actions: 0: up, 1: down, 2: left, 3: right
+    directions = {0: (-1, 0), 1: (1, 0), 2: (0, -1), 3: (0, 1)}
+
+    for state in passable_states:
+        transition_map[state] = {}
+        
+        for action in range(4):
+            transitions = []
             
-    
-    
+            for k in range(4):  # Explore all possible outcomes (including stochastic actions)
+                direction = directions[k]
+                new_state = (state[0] + direction[0], state[1] + direction[1])
+
+                # Check if the new state is within bounds and passable
+                if new_state in passable_states:
+                    reward = 1.0 if initial_board[new_state[0]][new_state[1]] == 64 else 0.0
+                    terminal = initial_board[new_state[0]][new_state[1]] == 64
+                else:
+                    new_state = state  # Stay in the same state if the next one is not passable
+                    reward = 0.0
+                    terminal = False
+
+                prob = 0.7 if k == action else 0.1
+                transitions.append((prob, new_state, reward, terminal))
+
+            transition_map[state][action] = transitions
+
+    return transition_map
