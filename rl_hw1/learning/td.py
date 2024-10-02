@@ -36,12 +36,53 @@ class TabularTDAgent(TabularAgent):
         **Note**: This function will be used in both Sarsa and Q learning.
         **Note** that: You can also implement you own answer to question 10.
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
+        episodic_rewards = []
+        epsilon = args.init_eps
+        
+        for episode in range(args.episodes):
+            # Decay epsilon based on args.eps_decay_rate
+            epsilon = max(args.final_eps, epsilon * args.eps_decay_rate)
+
+            # Run one episode using the policy (e.g., epsilon-greedy)
+            reward = self.one_episode_train(env, policy, epsilon, args.gamma, args.alpha)
+
+            if (episode + 1) % args._evaluate_period == 0:
+                eval_reward = self.evaluate(env)
+                episodic_rewards.append(eval_reward)
+
+        return episodic_rewards
+    
+    def one_episode_train(self, env, policy, epsilon, gamma, alpha):
+        """ Conducts one episode of training using the specified policy.
+
+        Arguments:
+            - env: Environment in which to train the agent
+            - policy: Policy to use for selecting actions
+            - epsilon: Current epsilon value for epsilon-greedy policy
+            - gamma: Discount factor
+            - alpha: Learning rate
+
+        Return:
+            - total_reward: Total reward accumulated during the episode
+        """
+        state = env.reset()
+        done = False
+        total_reward = 0
+
+        while not done:
+            action = policy(state, epsilon)  # Use the provided policy
+            next_state, reward, done, _ = env.step(action)  # Execute action
+            
+            # Update Q-values (for Q-learning or Sarsa)
+            best_next_action = np.argmax(self.qvalues[next_state])
+            td_target = reward + gamma * self.qvalues[next_state][best_next_action]
+            td_delta = td_target - self.qvalues[state][action]
+            self.qvalues[state][action] += alpha * td_delta  # Update the Q-value
+
+            total_reward += reward
+            state = next_state
+
+        return total_reward
 
 
 class QAgent(TabularTDAgent):
@@ -65,13 +106,11 @@ class QAgent(TabularTDAgent):
         Return:
             temporal diffrence error
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
-
+        state, action, reward, next_state, _ = transition
+        max_next_q = max(self.qvalues[next_state])  # Off-policy: use max a' of Q(s', a')
+        td_error = reward + gamma * max_next_q - self.qvalues[state][action]
+        self.qvalues[state][action] += alpha * td_error
+        return td_error
 
 class SarsaAgent(TabularTDAgent):
     """ Tabular Sarsa agent. Update rule is based on
@@ -94,9 +133,7 @@ class SarsaAgent(TabularTDAgent):
         Return:
             temporal diffrence error
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
+        state, action, reward, next_state, next_action = trans
+        td_error = reward + gamma * self.qvalues[next_state][next_action] - self.qvalues[state][action]
+        self.qvalues[state][action] += alpha * td_error
+        return td_error
