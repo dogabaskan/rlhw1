@@ -24,6 +24,7 @@ class TabularAgent:
 
         q_values = self.qvalues[state]
         best_action = np.argmax(q_values)
+        
         return int(best_action)  # Ensure action is returned as an integer
 
     def e_greedy_policy(self, state, epsilon, *args, **kwargs):
@@ -32,24 +33,36 @@ class TabularAgent:
         probability episolon/#action.
         """
         if random.random() < epsilon :
-            return int(random.randint(0, self.nact -1 ))
+            return random.randint(0, self.nact -1 )
         
-        return int(self.greedy_policy(state))
+        return self.greedy_policy(state)
             
 
     def evaluate(self, env, render=False):
         """ Runs a single episode using the greedy policy to evaluate performance.
         """
-        state = env.reset()  # Assuming the environment has reset()
-        done = False
+        state = env.reset()  # Start new episode
         total_reward = 0
+        done = False
+        deliveries = 0  # Track how many deliveries are made
+
         while not done:
             if render:
                 env.render()
-            action = self.greedy_policy(state)
-            next_state, reward, done, _ = env.step(action)  # Execute action
+            action = self.greedy_policy(state)  # Use greedy policy
+            next_state, reward, done, _ = env.step(action)  # Take action
             total_reward += reward
-            state = next_state
+            state = next_state  # Move to next state
+
+            # Check for successful deliveries
+            if reward > 0:  # If a delivery was made (reward > 0)
+                deliveries += 1
+
+            # If both deliveries are made, terminate the episode
+            if deliveries == 2:
+                total_reward = 2  # Set final reward to 2 for both deliveries
+                done = True
+
         return total_reward
 
 
@@ -79,24 +92,32 @@ class MonteCarloAgent(TabularAgent):
         state = env.reset()
         done = False
         episode = []
+        total_reward = 0
+        deliveries = 0
         
-        # Run the episode, collecting the state, action, and reward.
         while not done:
             action = policy(state)
             next_state, reward, done, _ = env.step(action)
             episode.append((state, action, reward))
+            total_reward += reward
             state = next_state
+            
+            if reward > 0:
+                deliveries += 1
+            
+            if deliveries == 2:
+                total_reward = 2
+                done = True
         
-        # Calculate returns and update Q-values
-        G = 0  # Initialize the return
+        G = 0  
+        visited = set()
+        
         for state, action, reward in reversed(episode):
-            G = gamma * G + reward  # Discounted return
-            if alpha is None:
-                # First-visit MC method (direct return update)
-                self.qvalues[state][action] = G
-            else:
-                # Incremental MC method with exponential decay
-                self.qvalues[state][action] += alpha * (G - self.qvalues[state][action])
-        
-        # Return the episodic reward
-        return sum([reward for _, _, reward in episode])
+            G = gamma * G + reward  
+            if (state, action) not in visited:
+                visited.add((state,action))
+                
+                old_q = self.qvalues[state][action]
+                self.qvalues[state][action] += alpha*(G-old_q)
+
+        return total_reward

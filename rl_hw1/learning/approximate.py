@@ -25,25 +25,19 @@ class ApproximateAgent():
     def greedy_policy(self, state, *args):
         """ Return the best possible action according to the value
         function """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
+        q_vals = self.q_values(state)
+        return np.argmax(q_vals)
 
     def e_greedy_policy(self, state, epsilon):
         """ Policy that returns the best action according to q values with
         (epsilon/#action) + (1 - epsilon) probability and any other action with
         probability episolon/#action.
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
-
+        if np.random.rand() < epsilon:
+            return np.random.randint(self.nact)
+        else:
+            return self.greedy_policy(state)
+        
     def train(self, env, policy, args):
         """ Training loop for the approximate agents.
         Initiate an episodic reward list and a loss list. At each episode
@@ -63,12 +57,36 @@ class ApproximateAgent():
             - Episodic reward list of evaluations (not the training rewards)
             - Loss list of the training (one loss for per update)
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
+        episodic_rewards = []
+        losses = []
+        epsilon = args.init_eps
+        
+        for episode in range(args.n_episodes):
+            state = env.reset()  # Assuming reset returns the initial state
+            total_reward = 0
+            
+            while True:
+                action = policy(state, epsilon)
+                next_state, reward, done, _ = env.step(action)
+                total_reward += reward
+                
+                # Update the agent's weights
+                loss = self.update((state, action, reward, next_state), args.alpha, args.gamma)
+                losses.append(loss)
+
+                if done:
+                    break
+                state = next_state
+            
+            episodic_rewards.append(total_reward)
+            # Update epsilon
+            epsilon = max(args.final_eps, epsilon * args.eps_decay_rate)
+
+            if episode % args._evaluate_period == 0:
+                eval_reward = self.evaluate(env)
+                episodic_rewards.append(eval_reward)
+
+        return episodic_rewards, losses
 
     def update(self, *arg, **kwargs):
         raise NotImplementedError
@@ -98,12 +116,16 @@ class ApproximateQAgent(ApproximateAgent):
         Return:
             Mean squared temporal difference error
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
+        state, action, reward, next_state = transition
+        q_values = self.q_values(state)
+        next_q_values = self.q_values(next_state)
+        
+        target = reward + gamma * np.max(next_q_values)
+        td_error = target - q_values[action]
+        
+        self.weights[:, action] += alpha * td_error * state
+
+        return np.square(td_error)
 
     def evaluate(self, env, render=False):
         """ Single episode evaluation of the greedy agent.
@@ -113,9 +135,18 @@ class ApproximateQAgent(ApproximateAgent):
         Return:
             Episodic reward
         """
-        #  ______   _____   _        _
-        # |  ____| |_   _| | |      | |
-        # | |__      | |   | |      | |
-        # |  __|     | |   | |      | |
-        # | |       _| |_  | |____  | |____
-        # |_|      |_____| |______| |______|
+        state = env.reset()  # Assuming reset returns the initial state
+        total_reward = 0
+        
+        while True:
+            if render:
+                env.render()  # Assuming render displays the environment
+            action = self.greedy_policy(state)
+            next_state, reward, done, _ = env.step(action)
+            total_reward += reward
+            
+            if done:
+                break
+            state = next_state
+        
+        return total_reward
